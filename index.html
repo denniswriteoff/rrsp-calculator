@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RRSP Tax Savings Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>RRSP Tax Savings Calculator</h2>
+        <label>Annual Income ($):</label>
+        <input type="number" step="0.01" id="income" placeholder="Enter your total income in 2024">
+        
+        <label>Estimated Tax Withheld in 2024 ($):</label>
+        <input type="number" step="0.01" id="withheld" placeholder="Enter total tax deducted from paychecks in 2024 (income tax, CPP, EI)">
+        
+        <label>RRSP Contributions 2024 ($):</label>
+        <input type="number" step="0.01" id="rrsp" placeholder="Enter total RRSP contributions made in 2024 and so far in 2025">
+        
+        <label>Other Deductions ($):</label>
+        <input type="number" step="0.01" id="deductions" placeholder="Enter any other tax-deductible expenses (e.g., medical, professional fees, etc.)">
+        
+        <button onclick="calculateTax()">Calculate Tax Owing & RRSP Needed</button>
+        
+        <h3 id="result"></h3>
+    </div>
+
+    <script>
+        function formatCurrency(value) {
+            return `$${value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+        
+        function calculateTax() {
+            let income = parseFloat(document.getElementById("income").value) || 0;
+            let withheld = parseFloat(document.getElementById("withheld").value) || 0;
+            let rrsp = parseFloat(document.getElementById("rrsp").value) || 0;
+            let deductions = parseFloat(document.getElementById("deductions").value) || 0;
+            
+            let taxableIncome = Math.max(income - rrsp - deductions, 0);
+            
+            // Federal tax brackets (2024)
+            let federalBrackets = [55867, 111733, 173205, 246752];
+            let federalRates = [0.15, 0.205, 0.26, 0.29, 0.33];
+            
+            // Ontario tax brackets (2024)
+            let ontarioBrackets = [49231, 98463, 150000, 220000];
+            let ontarioRates = [0.0505, 0.0915, 0.1116, 0.1216, 0.1316];
+            
+            function calculateTaxAmount(brackets, rates, income) {
+                let tax = 0;
+                let prevBracket = 0;
+                for (let i = 0; i < brackets.length; i++) {
+                    if (income > brackets[i]) {
+                        tax += (brackets[i] - prevBracket) * rates[i];
+                        prevBracket = brackets[i];
+                    } else {
+                        tax += (income - prevBracket) * rates[i];
+                        return tax;
+                    }
+                }
+                tax += (income - prevBracket) * rates[rates.length - 1];
+                return tax;
+            }
+            
+            let federalTax = calculateTaxAmount(federalBrackets, federalRates, taxableIncome);
+            let ontarioTax = calculateTaxAmount(ontarioBrackets, ontarioRates, taxableIncome);
+            
+            let deductionImpact = deductions * 0.20; // Applying a general 20% reduction estimate for deductions
+            
+            let totalTax = federalTax + ontarioTax - deductionImpact;
+            let taxOwing = totalTax - withheld;
+            let refund = taxOwing < 0 ? Math.abs(taxOwing) : 0;
+            taxOwing = taxOwing > 0 ? taxOwing : 0;
+            taxOwing = taxOwing < 0 ? 0 : taxOwing;
+            
+            // Calculate suggested RRSP contribution to reduce tax owing to zero
+            let additionalRRSPNeeded = Math.min(taxOwing / 0.30, taxableIncome * 0.18); // Limit to max RRSP room (18% of taxable income)
+            
+            document.getElementById("result").innerHTML = refund > 0 
+                ? `Estimated Tax Refund: ${formatCurrency(refund)}`
+                : `Estimated Tax Owing: ${formatCurrency(taxOwing)}<br>Suggested Additional RRSP Contribution: ${formatCurrency(Math.max(additionalRRSPNeeded, 0))}`;
+        }
+    </script>
+</body>
+</html>
